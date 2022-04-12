@@ -1,0 +1,156 @@
+#!/usr/bin/env perl6
+
+use v6;
+use Terminal::ANSIColor;
+
+proto sub inicia-abaco   ( --> Int:D ) {*};
+proto sub redireciona-op (Int:D $entrada) {*};
+proto sub requer-redsult (Str:D $entrada, Bool:D $conds, Str:D $aviso --> Str:D ) {*};
+proto sub retorna-cond1  (Str:D $entrada) {*};
+proto sub retorna-cond2  (Str:D $entrada) {*};
+proto sub retorna-cond3  (Str:D $entrada) {*};
+proto sub computa-erro   (Int:D $numero1, Int:D $numero2 --> Bool) {*};
+proto sub computa-tempo  (Int:D $delta-tempo --> Str) {*};
+proto sub adicao-op        {*};
+proto sub adicao         (Int:D $rodadas, Int:D $casas) {*};
+proto sub substracao-op    {*};
+proto sub multiplicacao-op {*};
+proto sub divisao-op       {*};
+
+#=========================================================================#
+#                               MAIN                                      #
+#=========================================================================#
+sub MAIN {
+	shell 'clear';
+	redireciona-op (inicia-abaco);
+}
+
+#========================= OPERAÇÕES BÁSICAS =============================#
+
+multi sub computa-erro ($numero1, $numero2) {
+#Avalia se os resultados dados pelo programa e pelo usuário são iguais, então envia
+#uma mensagem para o terminal avisando sobre o resultado e retorna True ou False de 
+#acordo com a avaliação
+	{ put "[" ~ color("bold green"), "CORRETO", color('reset') ~ "]"; return True  } if ($numero1 == $numero2);
+	{ put "[" ~ color("bold red"), "ERRADO" , color('reset') ~ "]" ;  return False } if ($numero1 != $numero2);
+}
+
+multi sub computa-tempo ($delta-tempo) {
+	my $minutos = ($delta-tempo/60).Int;
+	my $segundos = ($delta-tempo - $minutos*60).Int;
+	return "$minutos:$segundos".Str;
+}
+
+multi sub divisao-op {
+	"Divisão".put;
+}
+
+multi sub multiplicacao-op {
+	"Multiplicação".put;
+}
+
+multi sub subtracao-op { 
+	"Subtração".put;
+}
+
+multi sub retorna-cond2 ( Str:D $entrada ) { 
+#retorna a condição de número 2 para avaliação em &requer-result
+  	return any(!(+$entrada ~~ Int), +$entrada < 2, $entrada > 50).Bool;
+}
+
+multi sub retorna-cond3 ( Str:D $entrada ) { 
+#retorna a condição de número 3 para avaliação em &requer-result
+	return any(!(+$entrada ~~ Int), +$entrada < 2, $entrada > 10).Bool;
+}
+
+multi sub adicao ($rodadas, $casas) {
+	my $inicio = now;
+	my $acertos = 0;
+	my $erros   = 0;
+	my $letreiro = 
+"+++++++++++++++++++++++++++++++++++++
++              ADIÇÃO               +
++++++++++++++++++++++++++++++++++++++\n"; 
+	for (1 .. $rodadas) {
+		shell 'clear';
+		say color("bold green"), $letreiro, color('reset');
+		my $numero1   = (10..10**$casas).rand.Int;
+		my $numero2   = (10..10**$casas).rand.Int;
+		my $tentativa = prompt ("$numero1 + $numero2 = ");
+		my $resultado = computa-erro(+$tentativa, $numero1 + $numero2);
+		if ($resultado == True) { $acertos++; }
+		else                    { $erros++;   }
+		sleep 1;
+	}
+	my $termino = now;
+	put q:c:b [\nAcertos: {100*$acertos/$rodadas}%\nErros:   {100*$erros/$rodadas}%\n];
+	put q:c:b [Tempo necessário {computa-tempo(($termino - $inicio).Int)}\n];
+}
+
+
+multi sub adicao-op {
+#Requer sistematicamente que o usuário informe a quantidade de rodadas a serem jogadas 
+#entre 2 e 50, e a quantidade de casas que ambos os números devem ter, de 2 a 10, pedindo
+#seguidamente que o usuário entre com quantidades válidas caso ele não se mantenha nos
+#domínios, ou saindo caso ele digite 'p'. Caso contrário, chama &adicao para continuar
+#com o jogo
+	my $entrada1 = prompt 'Quantidade de rodadas [2-50]: ';
+	my $rodadas  = requer-result($entrada1, &retorna-cond2,
+				    "\nQuantidade inválida.\nTente novamente [2-50]: ");
+
+	my $entrada2 = prompt 'Quantidade de casas [2-10]: ';
+	my $casas    = requer-result($entrada2, &retorna-cond3,
+				       "\nQuantidade inválida.\nTente novamente [2-10]: ");
+	adicao(+$rodadas, +$casas);
+}
+
+
+#===================== FIM DAS OPERAÇÕES BÁSICAS =========================#
+
+#===================== INTERFACE INICIAL DO PROGRAMA =====================#
+multi sub redireciona-op ($entrada) {
+#Redireciona para a função requerida pelo usuário de acordo com 
+#o índice que foi fornecido como entrada
+	adicao-op()        if $entrada == 1;
+	subtracao-op()     if $entrada == 2;
+	multiplicacao-op() if $entrada == 3;
+	divisao-op()       if $entrada == 4;
+}
+
+multi sub retorna-cond1 ( Str:D $entrada ) { 
+#retorna a condição de número 1 para avaliação em &requer-result
+	return any(!(+$entrada ~~ Int), +$entrada < 1, $entrada > 4).Bool;
+}
+
+multi sub requer-result ($entrada is rw, $conds, $aviso --> Str:D ) {
+#Verifica a validade da condição de entrada como válida, primeiramente.
+#Caso não se enquadre na especificação, termina o programa. Caso se enquadre
+#verifica sua validade numérica, e continua requerindo por números ou pelo
+#término do programa até que se obtenha um resultado utilizável
+	if ($entrada eq 'q') { "Terminando...\n".put; exit };
+	while ( &$conds($entrada) ) {
+		put $aviso;
+		$entrada = prompt '>';
+		if ($entrada eq 'q') { "Terminando...\n".put; exit }
+	}
+	return $entrada;
+}
+
+multi sub inicia-abaco (--> Int:D ) {
+#Faz a chamada da função primária de forma ao usuário saber quais
+#são as opções disponíveis e dar entrada em um número válido. Caso
+#o número não seja válido, continua demandando um válido ao usuário
+	
+	put color('bold red'), "Qual operação deve ser executada?", color('reset');
+	put '(' ~ color('bold green'),  "1", color('reset') ~ ') Adição';
+	put '(' ~ color('bold yellow'), "2", color('reset') ~ ') Subtração';
+	put '(' ~ color('bold blue'),   "3", color('reset') ~ ') Multiplicação';
+	put '(' ~ color('bold red'),    "4", color('reset') ~ ') Subtração';
+	
+	my $entrada = prompt '>';
+	my $resultado = requer-result($entrada,
+				      &retorna-cond1,
+				      "Entrada inválida.\nTente novamente [1-4]");
+	return +$resultado;
+}
+#======================= FIM DA INTERFACE INICIAL ========================#
