@@ -11,11 +11,11 @@ proto sub retorna-cond2  (Str:D $entrada) {*};
 proto sub retorna-cond3  (Str:D $entrada) {*};
 proto sub computa-erro   (Int:D $numero1, Int:D $numero2 --> Bool) {*};
 proto sub computa-tempo  (Int:D $delta-tempo --> Str) {*};
-proto sub adicao-op        {*};
+proto sub operacao-op    ($func)  {*};
 proto sub adicao         (Int:D $rodadas, Int:D $casas) {*};
-proto sub substracao-op    {*};
-proto sub multiplicacao-op {*};
-proto sub divisao-op       {*};
+proto sub subtracao      (Int:D $rodadas, Int:D $casas) {*};
+proto sub multiplicacao  (Int:D $rodadas, Int:D $casas) {*};
+proto sub divisao        (Int:D $rodadas, Int:D $casas) {*};
 
 #=========================================================================#
 #                               MAIN                                      #
@@ -36,21 +36,56 @@ multi sub computa-erro ($numero1, $numero2) {
 }
 
 multi sub computa-tempo ($delta-tempo) {
+
 	my $minutos = ($delta-tempo/60).Int;
 	my $segundos = ($delta-tempo - $minutos*60).Int;
 	return "$minutos:$segundos".Str;
 }
 
-multi sub divisao-op {
-	"Divisão".put;
+multi sub divisao {
+	my $letreiro = 
+"+++++++++++++++++++++++++++++++++++++
++              DIVISÃO              +
++++++++++++++++++++++++++++++++++++++\n";
+	say color("bold red"), $letreiro, color('reset');
 }
 
-multi sub multiplicacao-op {
-	"Multiplicação".put;
+multi sub multiplicacao { 
+	my $letreiro = 
+"+++++++++++++++++++++++++++++++++++++
++           MULTIPLICAÇÃO           +
++++++++++++++++++++++++++++++++++++++\n";
+	say color("bold blue"), $letreiro, color('reset');
 }
 
-multi sub subtracao-op { 
-	"Subtração".put;
+multi sub subtracao ($rodadas, $casas) { 
+#A partir da quantidade de rodadas e casas especificadas pelo usuário, roda o programa
+#requerendo os resultados de acordo com as especificações nos argumentos da função,
+#executando a operação equivalente à subtração
+	my $inicio = now;
+	my $acertos = 0;
+	my $erros   = 0;
+	my $letreiro = 
+"+++++++++++++++++++++++++++++++++++++
++             SUBTRAÇÃO             +
++++++++++++++++++++++++++++++++++++++\n"; 
+	for (1 .. $rodadas) {
+		shell 'clear';
+		say color("bold yellow"), $letreiro, color('reset');
+		my $numero1   = (10..10**$casas).rand.Int;
+		my $numero2   = $numero1;
+		$numero2 = do { $numero2 = (10..10**$casas).rand.Int } while $numero2 == $numero1;
+		
+		my $valor = max($numero2, $numero1) - min($numero2, $numero1);
+		my $tentativa = prompt ("{max($numero2, $numero1)} - {min($numero2, $numero1)} = ");
+		my $resultado = computa-erro(+$tentativa, $valor);
+		if ($resultado == True) { $acertos++; }
+		else                    { $erros++;   }
+		sleep 1;
+	}
+	my $termino = now;
+	put q:c:b [\nAcertos: {100*$acertos/$rodadas}%\nErros:   {100*$erros/$rodadas}%\n];
+	put q:c:b [Tempo necessário {computa-tempo(($termino - $inicio).Int)}\n];
 }
 
 multi sub retorna-cond2 ( Str:D $entrada ) { 
@@ -64,6 +99,9 @@ multi sub retorna-cond3 ( Str:D $entrada ) {
 }
 
 multi sub adicao ($rodadas, $casas) {
+#A partir da quantidade de rodadas e casas especificadas pelo usuário, roda o programa
+#requerendo os resultados de acordo com as especificações nos argumentos da função,
+#executando a operação equivalente à adição
 	my $inicio = now;
 	my $acertos = 0;
 	my $erros   = 0;
@@ -88,7 +126,7 @@ multi sub adicao ($rodadas, $casas) {
 }
 
 
-multi sub adicao-op {
+multi sub operacao-op ($func) {
 #Requer sistematicamente que o usuário informe a quantidade de rodadas a serem jogadas 
 #entre 2 e 50, e a quantidade de casas que ambos os números devem ter, de 2 a 10, pedindo
 #seguidamente que o usuário entre com quantidades válidas caso ele não se mantenha nos
@@ -101,7 +139,7 @@ multi sub adicao-op {
 	my $entrada2 = prompt 'Quantidade de casas [2-10]: ';
 	my $casas    = requer-result($entrada2, &retorna-cond3,
 				       "\nQuantidade inválida.\nTente novamente [2-10]: ");
-	adicao(+$rodadas, +$casas);
+	&$func(+$rodadas, +$casas);
 }
 
 
@@ -111,10 +149,10 @@ multi sub adicao-op {
 multi sub redireciona-op ($entrada) {
 #Redireciona para a função requerida pelo usuário de acordo com 
 #o índice que foi fornecido como entrada
-	adicao-op()        if $entrada == 1;
-	subtracao-op()     if $entrada == 2;
-	multiplicacao-op() if $entrada == 3;
-	divisao-op()       if $entrada == 4;
+	operacao-op(&adicao)        if $entrada == 1;
+	operacao-op(&subtracao)     if $entrada == 2;
+	operacao-op(&multiplicacao) if $entrada == 3;
+	operacao-op(&divisao)       if $entrada == 4;
 }
 
 multi sub retorna-cond1 ( Str:D $entrada ) { 
